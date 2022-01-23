@@ -9,6 +9,7 @@
 struct node{
 	char *name;
 	char *type;
+	char *scope; //possible values are "global" or "local" or "enclosing"
 };
 
 struct node symtab[SYMTABSIZE]; 
@@ -37,7 +38,7 @@ int hash_search(char *str) {
 	return (-1);
 }
 
-int hash_insert(char *str,char *typ) {
+int hash_insert(char *str,char *typ,char *scope) {
 	if(hash_search(str)==-1) {
 		int i=0;
 		int j;
@@ -47,6 +48,8 @@ int hash_insert(char *str,char *typ) {
 				strcpy(symtab[j].name,str);
 				symtab[j].type=(char*)malloc(10*sizeof(char));
 				strcpy(symtab[j].type,typ);
+				symtab[j].scope=(char*)malloc(9*sizeof(char)); //maximum lenght scope name is "enclosing"
+				strcpy(symtab[j].scope,scope);
 				return j;
 			}
 			i++;
@@ -67,13 +70,13 @@ void init_symtable() {
 void print_table() {
 	int i;
 	printf("\nSYMBOL TABLE\n");
-	printf("---------------------------------\n");
-	printf("|INDEX\t|NAME\t|DATATYPE\t|\n");
-	printf("---------------------------------\n");
+	printf("-------------------------------------------------\n");
+	printf("|INDEX\t|NAME\t|DATATYPE\t|SCOPE\t\t|\n");
+	printf("-------------------------------------------------\n");
 	for(i=0;i<SYMTABSIZE;i++) {
 		if(strcmp(symtab[i].name,"NULL")!=0)
-			printf("|%d\t|%s\t|%s\t|\n",i,symtab[i].name,symtab[i].type);
+			printf("|%d\t|%s\t|%s\t\t|%s\t\t|\n",i,symtab[i].name,symtab[i].type,symtab[i].scope);
 	}
-	printf("---------------------------------\n");
+	printf("-------------------------------------------------\n");
     return;
 }

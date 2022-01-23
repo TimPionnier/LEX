@@ -11,7 +11,7 @@ void print_function_parameters(B_TREE t);
 
 void parse_tree_to_python(B_TREE t, int stmt_block_counter)
 {
-    // TODO(): check stmt, stmtblock etc, check begin/end, check func call
+    // TODO(): check func call
 
     if (t == NULL)
         return;

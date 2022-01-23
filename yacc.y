@@ -11,6 +11,7 @@
 
 char *id[100];
 char *type[100];
+char *current_scope = "global";
 
 int yylex();
 int yyerror(char *s);
@@ -27,7 +28,6 @@ struct symTabNode {
 typedef struct symTabNode SYMTABNODE;
 typedef SYMTABNODE *SYMTABNODEPTR;
 SYMTABNODEPTR symTab[SYMTABSIZE];
-int currentSymTabSize=0;
 
 void PrintTree(B_TREE);
 %}
@@ -250,7 +250,7 @@ stmt:
           strcat(type[0],type[j]);
         }
       }
-      insert_result = hash_insert(id[i],type[0]);
+      insert_result = hash_insert(id[i],type[0],current_scope);
       if (insert_result == -1){
         char message[35+IDLENGTH] = "Variable ";
         strcat(message,id[i]);
@@ -290,7 +290,7 @@ stmt:
           strcat(type[0],type[j]);
         }
       }
-      insert_result = hash_insert(id[i],type[0]);
+      insert_result = hash_insert(id[i],type[0],current_scope);
       if (insert_result == -1){
         char message[35+IDLENGTH] = "Variable ";
         strcat(message,id[i]);
@@ -350,7 +350,7 @@ declaration:
           strcat(type[0],type[j]);
         }
       }
-      insert_result = hash_insert(id[i],type[0]);
+      insert_result = hash_insert(id[i],type[0],current_scope);
       if (insert_result == -1){
         char message[35+IDLENGTH] = "Variable ";
         strcat(message,id[i]);
