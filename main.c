@@ -1,7 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 extern int yylex();
-#define YYDEBUG 1
+#define YYDEBUG 0
 #include "y.tab.c"
 #include "lex.yy.c"
 extern FILE *yyin;

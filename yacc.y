@@ -11,7 +11,6 @@
 
 char *id[100];
 char *type[100];
-char *current_scope = "global";
 
 int yylex();
 int yyerror(char *s);
@@ -70,9 +69,11 @@ program:
   stmt_list END_INPUT{
     struct TreeValue empty_node; empty_node.use="none";
     $$ = create_node(empty_node,PROGRAM,$1,NULL,NULL,NULL); 
-    PrintTree($$);
+    //PrintTree($$);
+    define_symtab_scopes($$,"global");
+    //check_symtab_scopes();
     print_table();
-    parse_tree_to_python($$,0);
+    //parse_tree_to_python($$,0);
     exit(0);
   }
   ;
@@ -113,121 +114,54 @@ stmt:
     $$ = create_node(empty_node,STMT,$1,NULL,NULL,NULL); 
   }
   | IF expr THEN NEWLINE stmt %prec IFX {
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,IF_ELSE_STMT,$2,$5,NULL,NULL); 
-    } else {
-      yyerror("Condition has to be a boolean expression.");
-      exit(1);
-    }
   }
   | IF expr THEN NEWLINE stmt_block %prec IFX {
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,IF_ELSE_STMT,$2,$5,NULL,NULL); 
-    } else {
-      yyerror("Condition has to be a boolean expression.");
-      exit(1);
-    }
   }
   | IF expr THEN NEWLINE stmt ELSE NEWLINE stmt {
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,IF_ELSE_STMT,$2,$5,$8,NULL); 
-    } else {
-      yyerror("Condition has to be a boolean expression.");
-      exit(1);
-    }
   }
   | IF expr THEN NEWLINE stmt_block ELSE NEWLINE stmt_block {
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,IF_ELSE_STMT,$2,$5,$8,NULL); 
-    } else {
-      yyerror("Condition has to be a boolean expression.");
-      exit(1);
-    }
   }
   | IF expr THEN NEWLINE stmt ELSE NEWLINE stmt_block {
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,IF_ELSE_STMT,$2,$5,$8,NULL); 
-    } else {
-      yyerror("Condition has to be a boolean expression.");
-      exit(1);
-    }
   }
   | IF expr THEN NEWLINE stmt_block ELSE NEWLINE stmt {
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,IF_ELSE_STMT,$2,$5,$8,NULL); 
-    } else {
-      yyerror("Condition has to be a boolean expression.");
-      exit(1);
-    }
   }
   | WHILE expr DO NEWLINE stmt {
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,WHILE_LOOP,$2,$5,NULL,NULL); 
-    } else {
-      yyerror("Condition has to be a boolean expression.");
-      exit(1);
-    }
   }
   | WHILE expr DO NEWLINE stmt_block {
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,WHILE_LOOP,$2,$5,NULL,NULL); 
-    } else {
-      yyerror("Condition has to be a boolean expression.");
-      exit(1);
-    }
   }
   | FOR assignation TO constant DO NEWLINE stmt {
-    if (strcmp($4->val.use,"int") != 0){
-      yyerror("For-do loop: Variable and constant have to be of type integer.");
-      exit(1);
-    } else {
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,FOR_LOOP,$2,$4,$7,NULL); 
-    }
   }
   | FOR assignation TO constant DO NEWLINE stmt_block {
-    if (strcmp($4->val.use,"int") != 0){
-      yyerror("For-do loop: Variable and constant have to be of type integer.");
-      exit(1);
-    } else {
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,FOR_LOOP,$2,$4,$7,NULL); 
-    }
   }
   | READ '(' id_declarator ')' stmt_terminator NEWLINE {
-    int id_index;
-    id_index = hash_search($3->val.v.s);
-    if (id_index == -1){
-      char message[32+IDLENGTH] = "Variable ";
-      strcat(message,$3->val.v.s);
-      strcat(message," has not been declared.");
-      yyerror(message);
-      exit(1);
-    }  else {
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,READ_STMT,$3,NULL,NULL,NULL);
-    }
   }
   | WRITE '(' expr ')' stmt_terminator NEWLINE {
     struct TreeValue empty_node; empty_node.use="none";
     $$ = create_node(empty_node,WRITE_STMT,$3,NULL,NULL,NULL);
   }
   | FUNCTION id_declarator '(' declaration_list ')' DECLARATOR type_specifier NEWLINE stmt_block_with_return {
-    if (strcmp($7->val.v.s,"void") == 0){
-      yyerror("Assign a void type to the function but there is a return value.");
-      exit(1);
-    } else if (strcmp($7->val.v.s,$9->second->val.use) != 0){
-      yyerror("Function and return value type mismatch.");
-      exit(1);
-    }
 
     int i, j, type_index = 0, id_index = 0, insert_result;
 
@@ -250,25 +184,13 @@ stmt:
           strcat(type[0],type[j]);
         }
       }
-      insert_result = hash_insert(id[i],type[0],current_scope);
-      if (insert_result == -1){
-        char message[35+IDLENGTH] = "Variable ";
-        strcat(message,id[i]);
-        strcat(message," has already been declared.");
-        yyerror(message);
-        exit(1);
-      }
+      insert_result = hash_insert(id[i],type[0]);
     }
 
     struct TreeValue empty_node; empty_node.use="none";
     $$ = create_node(empty_node,FUNC_STMT,$2,$4,$7,$9);
   }
   | FUNCTION id_declarator '(' declaration_list ')' DECLARATOR type_specifier NEWLINE stmt_block {
-    if (strcmp($7->val.v.s,"void") != 0){
-      yyerror("Assign a value type to the function but there is no return.");
-      exit(1);
-    }
-
     int i, j, type_index = 0, id_index = 0, insert_result;
 
     for(i = 0; i < 100; i++) {
@@ -290,14 +212,7 @@ stmt:
           strcat(type[0],type[j]);
         }
       }
-      insert_result = hash_insert(id[i],type[0],current_scope);
-      if (insert_result == -1){
-        char message[35+IDLENGTH] = "Variable ";
-        strcat(message,id[i]);
-        strcat(message," has already been declared.");
-        yyerror(message);
-        exit(1);
-      }
+      insert_result = hash_insert(id[i],type[0]);
     }
 
     struct TreeValue empty_node; empty_node.use="none";
@@ -324,11 +239,6 @@ declaration_list:
 
 declaration:
   declarator_list DECLARATOR type_specifier stmt_terminator {
-    if (strcmp($3->val.v.s,"void") == 0){
-      yyerror("Cannot assign void type to a variable");
-      exit(1);
-    }
-
     int i, j, type_index = 0, id_index = 0, insert_result;
 
     for(i = 0; i < 100; i++) {
@@ -350,16 +260,8 @@ declaration:
           strcat(type[0],type[j]);
         }
       }
-      insert_result = hash_insert(id[i],type[0],current_scope);
-      if (insert_result == -1){
-        char message[35+IDLENGTH] = "Variable ";
-        strcat(message,id[i]);
-        strcat(message," has already been declared.");
-        yyerror(message);
-        exit(1);
-      }
+      insert_result = hash_insert(id[i],type[0]);
     }
-
     struct TreeValue empty_node; empty_node.use="none";
     $$ = create_node(empty_node,DECLARATION,$1,$3,NULL,NULL);
   }
@@ -426,27 +328,8 @@ type_specifier:
 
 assignation:
   id_declarator ASSIGNATOR expr {
-    int id_index;
-    id_index = hash_search($1->val.v.s);
-    if (id_index == -1){
-      char message[32+IDLENGTH] = "Variable ";
-      strcat(message,$1->val.v.s);
-      strcat(message," has not been declared.");
-      yyerror(message);
-      exit(1);
-    } else if (strcmp(symtab[id_index].type,$3->val.use) != 0){
-      char message[70+IDLENGTH] = "Variable ";
-      strcat(message,$1->val.v.s);
-      strcat(message," type is ");
-      strcat(message,symtab[id_index].type);
-      strcat(message," but trying to assign a value of type ");
-      strcat(message,$3->val.use);
-      yyerror(message);
-      exit(1);
-    } else {
       struct TreeValue empty_node; empty_node.use="none";
       $$ = create_node(empty_node,ASSIGNATION,$1,$3,NULL,NULL);
-    }
   }
   ;
 
@@ -492,19 +375,9 @@ expr:
     struct TreeValue empty_node; empty_node.use=$1->val.use; $$ = create_node(empty_node, CONSTANT_EXPR, $1, NULL, NULL, NULL); 
   }
   | id_declarator { 
-    int id_index;
-    id_index = hash_search($1->val.v.s);
-    if (id_index == -1){
-      char message[32+IDLENGTH] = "Variable ";
-      strcat(message,$1->val.v.s);
-      strcat(message," has not been declared.");
-      yyerror(message);
-      exit(1);
-    } else {
       struct TreeValue empty_node; 
-      empty_node.use=symtab[id_index].type;
+      empty_node.use="none";
       $$ = create_node(empty_node,ID_EXPR,$1,NULL,NULL,NULL);
-    }
   }
   | '-' expr %prec UMINUS { 
     struct TreeValue empty_node; 
@@ -512,40 +385,22 @@ expr:
     $$ = create_node(empty_node, OPPOSITE, $2, NULL, NULL, NULL); 
   }
   | expr '+' expr  { 
-    if (strcmp($1->val.use, $3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use=$1->val.use; 
       $$ = create_node(empty_node, ADDITION, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compute expression of two different types.");
-      exit(1);
-    }
   }
   | expr '-' expr  { 
-    if (strcmp($1->val.use,$3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use=$1->val.use; 
       $$ = create_node(empty_node, SOUSTRACTION, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compute expression of two different types.");
-      exit(1);
-    }
   }
   | expr '*' expr  { 
-    if (strcmp($1->val.use,$3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use=$1->val.use; 
       $$ = create_node(empty_node, MULTIPLICATION, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compute expression of two different types.");
-      exit(1);
-    }
   }
   | expr '/' expr  { 
-    if (strcmp($1->val.use,$3->val.use) != 0){
-      yyerror("Trying to compute expression of two different types.");
-      exit(1);
-    } else if ($3->first->val.v.s != NULL 
+    if ($3->first->val.v.s != NULL 
               && (strcmp($3->first->val.use,"int") == 0 && $3->first->val.v.i == 0) 
               || (strcmp($3->val.use,"real") == 0 && $3->first->val.v.r == 0)) {
       yyerror("Trying to divide by 0.");
@@ -557,100 +412,52 @@ expr:
     }
   }
   | expr INF expr  { 
-    if (strcmp($1->val.use,$3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, INFERIOR, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compare expressions of two different types.");
-      exit(1);
-    }
   }
   | expr AND expr  { 
-    if (strcmp($1->val.use,"bool") == 0 && strcmp($3->val.use,"bool") == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, AND_OP, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Using logical operator AND with non boolean values.");
-      exit(1);
-    } 
   }
   | expr OR expr  { 
-    if (strcmp($1->val.use,"bool") == 0 && strcmp($3->val.use,"bool") == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, OR_OP, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Using logical operator OR with non boolean values.");
-      exit(1);
-    } 
   }
   | NOT expr  { 
-    if (strcmp($2->val.use,"bool") == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, NOT_OP, $2, NULL, NULL, NULL); 
-    } else {
-      yyerror("Using logical operator NOT with non boolean values.");
-      exit(1);
-    } 
   }
   | expr SUP expr  { 
-    if (strcmp($1->val.use,$3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, SUPERIOR, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compare expressions of two different types.");
-      exit(1);
-    }
   }
   | expr SUPEQ expr  { 
-    if (strcmp($1->val.use,$3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, SUPERIOR_EQUAL, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compare expressions of two different types.");
-      exit(1);
-    }
   }
   | expr INFEQ expr  { 
-    if (strcmp($1->val.use,$3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, INFERIOR_EQUAL, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compare expressions of two different types.");
-      exit(1);
-    }
   }
   | expr NOTEQ expr  { 
-    if (strcmp($1->val.use,$3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, NOT_EQUAL, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compare expressions of two different types.");
-      exit(1);
-    }
   }
   | expr EQ expr  { 
-    if (strcmp($1->val.use,$3->val.use) == 0){
       struct TreeValue empty_node; 
       empty_node.use="bool"; 
       $$ = create_node(empty_node, EQUAL, $1, $3, NULL, NULL); 
-    } else {
-      yyerror("Trying to compare expressions of two different types.");
-      exit(1);
-    }
   }
   | expr DIV expr  { 
-    if (strcmp($1->val.use,$3->val.use) != 0){
-      yyerror("Trying to compute expression of two different types.");
-      exit(1);
-    } else if ($3->first->val.v.s != NULL 
+    if ($3->first->val.v.s != NULL 
               && (strcmp($3->first->val.use,"int") == 0 && $3->first->val.v.i == 0) 
               || (strcmp($3->val.use,"real") == 0 && $3->first->val.v.r == 0)) {
       yyerror("Trying to divide by 0.");
@@ -662,10 +469,7 @@ expr:
     }
   }
   | expr MOD expr { 
-    if (strcmp($1->val.use,$3->val.use) != 0){
-      yyerror("Trying to compute expression of two different types.");
-      exit(1);
-    } else if ($3->first->val.v.s != NULL 
+    if ($3->first->val.v.s != NULL 
               && (strcmp($3->first->val.use,"int") == 0 && $3->first->val.v.i == 0) 
               || (strcmp($3->val.use,"real") == 0 && $3->first->val.v.r == 0)) {
       yyerror("Trying to divide by 0.");
@@ -682,44 +486,25 @@ expr:
     $$ = create_node(empty_node, PARENTHESIS, $2, NULL, NULL, NULL); 
   }
   | ABS '(' expr ')' {
-    if (strcmp($3->val.use,"int") != 0 && strcmp($3->val.use,"real") != 0){
-      yyerror("Absolute function parameter has to be an int or a real number.");
-      exit(1);
-    } else {
-      struct TreeValue empty_node; 
-      empty_node.use=$3->val.use; 
-      $$ = create_node(empty_node, ABS_FUNC, $3, NULL, NULL, NULL);
-    }
+    struct TreeValue empty_node; 
+    empty_node.use=$3->val.use; 
+    $$ = create_node(empty_node, ABS_FUNC, $3, NULL, NULL, NULL);
   }
   | LOG '(' expr ')' {
-    if (strcmp($3->val.use,"int") != 0 && strcmp($3->val.use,"real") != 0){
-      yyerror("Logarithm function parameter has to be an int or a real number.");
-      exit(1);
-    } else {
       struct TreeValue empty_node; 
       empty_node.use="real"; 
       $$ = create_node(empty_node, LOG_FUNC, $3, NULL, NULL, NULL);
-    }
   }
   | LOG '(' expr COMMA expr ')' {
-    if ((strcmp($3->val.use,"int") != 0 && strcmp($3->val.use,"real") != 0)||(strcmp($5->val.use,"int") != 0 && strcmp($5->val.use,"real") != 0)){
-      yyerror("Logarithm function parameters has to be an int or a real number.");
-      exit(1);
-    } else {
       struct TreeValue empty_node; 
       empty_node.use="real"; 
       $$ = create_node(empty_node, LOG_FUNC, $3, $5, NULL, NULL);
-    }
+    
   }
   | EXP '(' expr ')' {
-    if (strcmp($3->val.use,"int") != 0 && strcmp($3->val.use,"real") != 0){
-      yyerror("Absolute function parameter has to be an int or a real number.");
-      exit(1);
-    } else {
       struct TreeValue empty_node; 
       empty_node.use="real"; 
       $$ = create_node(empty_node, EXP_FUNC, $3, NULL, NULL, NULL);
-    }
   }
   ;
 
